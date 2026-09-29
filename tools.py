@@ -6,10 +6,7 @@ import os
 import uuid
 import sys
 from datetime import datetime, date
-try:
-    from mcp.server.mcpserver import MCPServer
-except ImportError:
-    from mcp.server.fastmcp import FastMCP as MCPServer
+from mcp.server.mcpserver import MCPServer
 from auth import authorize_access
 from db import execute_query
 from dotenv import load_dotenv

@@ -3,6 +3,6 @@ uvicorn
 google-cloud-bigquery
 google-auth
 python-dotenv
-mcp
+mcp>=2.0.0
 google-adk
 google-adk[mcp]
