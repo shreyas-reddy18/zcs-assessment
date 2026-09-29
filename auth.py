@@ -48,7 +48,7 @@ def get_user_identity(email: str) -> dict:
     query = f"""
         SELECT employee_id, access_tier
         FROM `{dataset}.identity_map`
-        WHERE email = @email
+        WHERE google_email = @email
     """
     results = execute_query(query, {"email": email})
     if not results:

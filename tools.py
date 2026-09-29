@@ -4,13 +4,31 @@ Exposes specific functions that the HR Conversational Knowledge Agent can call.
 """
 import os
 import uuid
+import sys
 from datetime import datetime, date
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from auth import authorize_access
 from db import execute_query
+from dotenv import load_dotenv
+
+# Load environment variables for the MCP Server process
+load_dotenv()
 
 # Initialize MCP server instance
-mcp = FastMCP("HR-Agent-Tools")
+mcp = MCPServer("HR-Agent-Tools")
+
+@mcp.tool()
+def get_employee_id_by_email(email: str) -> str:
+    """
+    Looks up an employee_id given their Google email address.
+    Use this to find the current user's employee ID.
+    """
+    dataset = os.getenv("BQ_DATASET", "hr_dataset")
+    query = f"SELECT employee_id FROM `{dataset}.identity_map` WHERE google_email = @email"
+    results = execute_query(query, {"email": email})
+    if not results:
+        return "Employee ID not found for this email."
+    return str(results[0]["employee_id"])
 
 @mcp.tool()
 def get_personal_record(target_employee_id: str, current_user_email: str) -> dict:
@@ -23,7 +41,7 @@ def get_personal_record(target_employee_id: str, current_user_email: str) -> dic
     
     dataset = os.getenv("BQ_DATASET", "hr_dataset")
     query = f"""
-        SELECT employee_id, first_name, last_name, department, pto_balance_days, pto_used_ytd
+        SELECT employee_id, full_name, department, pto_balance_days, pto_used_ytd
         FROM `{dataset}.employees`
         WHERE employee_id = @employee_id
     """
@@ -136,7 +154,7 @@ def submit_pto_request(
     
     # Idempotency Check: query for exact match pending/approved request
     check_query = f"""
-        SELECT request_id, start_date, end_date, status, request_type
+        SELECT request_id, start_date, end_date, status
         FROM `{dataset}.pto_requests`
         WHERE employee_id = @employee_id 
           AND start_date = CAST(@start_date AS DATE)
@@ -169,9 +187,9 @@ def submit_pto_request(
     transaction_sql = f"""
         BEGIN TRANSACTION;
         
-        INSERT INTO `{dataset}.pto_requests` (request_id, employee_id, start_date, end_date, days_requested, status, request_type)
-        VALUES (@request_id, @employee_id, CAST(@start_date AS DATE), CAST(@end_date AS DATE), @days_requested, 'pending', @request_type);
-        
+        INSERT INTO `{dataset}.pto_requests` (request_id, employee_id, start_date, end_date, days_requested, status)
+        VALUES (@request_id, @employee_id, CAST(@start_date AS DATE), CAST(@end_date AS DATE), @days_requested, 'pending');
+
         UPDATE `{dataset}.employees`
         SET pto_balance_days = pto_balance_days - @days_requested,
             pto_used_ytd = pto_used_ytd + @days_requested
@@ -186,14 +204,17 @@ def submit_pto_request(
             "employee_id": target_employee_id,
             "start_date": start_date,
             "end_date": end_date,
-            "days_requested": days_requested,
-            "request_type": request_type
+            "days_requested": days_requested
         })
     except Exception as e:
-        return {"error": f"Database transaction failed: {str(e)}"}
+        print(f"🚨 BIGQUERY WRITE ERROR: {e}", file=sys.stderr)
+        return {"error": "Error: Database failure"}
         
     return {
         "status": "success",
         "message": "PTO request submitted successfully.",
         "request_id": request_id
     }
+
+if __name__ == "__main__":
+    mcp.run()

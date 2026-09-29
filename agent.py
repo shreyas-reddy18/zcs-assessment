@@ -2,44 +2,70 @@
 Meridian Dynamics HR Conversational Assistant.
 Initializes the core LlmAgent using Google's Agent Development Kit (ADK) and Gemini 1.5 Pro.
 """
+import os
+import asyncio
+from google.adk import Agent, Runner
+from google.adk.sessions import InMemorySessionService
+from google.adk.models import Gemini
+from google.adk.models.google_llm import GoogleLLMVariant
+from google.adk.tools import VertexAiSearchTool, McpToolset
+from mcp.client.stdio import StdioServerParameters
+from google.adk.utils.content_utils import to_user_content, extract_text_from_content
+from dotenv import load_dotenv
 
-from google_adk import LlmAgent, Runner, InMemorySessionService
-from google_adk.models import GeminiModel
+# Load environment variables (such as GCP_PROJECT_ID and VERTEX_DATA_STORE_ID)
+load_dotenv()
 
 # ---------------------------------------------------------------------------
 # Persona & System Instructions
 # ---------------------------------------------------------------------------
 SYSTEM_INSTRUCTION = """
-You are the official internal HR Conversational Assistant for Meridian Dynamics.
-Your primary role is to assist employees and managers with HR-related inquiries, 
-PTO requests, and company policy information.
-
-CORE RULES & RESPONSIBILITIES:
-1. Retrieval First: Always rely on your designated retrieval tool for answering questions 
-   about company policies, benefits, and guidelines. Do not invent or hallucinate policies.
-2. Strict Authorization: When interacting with employee data (like PTO balances or requests), 
-   enforce strict authorization boundaries by properly utilizing your backend tools. Never 
-   disclose data belonging to another employee unless authorized (e.g., manager accessing 
-   a direct report's data or People Ops).
-3. Explicit Confirmation: Before executing ANY write operations (such as submitting a PTO 
-   request), you MUST present a clear summary of the action to the user and prompt them 
-   for explicit confirmation. Only proceed with the database write once they have confirmed.
+You are the Meridian Dynamics internal HR assistant. 
+You have direct access to the HRIS database via your tools. 
+The current authenticated user is: shreyasngcp@gmail.com (Employee ID: E002).
+If the user asks for their PTO balance or pending requests, you MUST use your tools to fetch it.
 """
 
 # ---------------------------------------------------------------------------
 # Agent Initialization
 # ---------------------------------------------------------------------------
-# Initialize the model with Gemini 1.5 Pro
-model = GeminiModel(model_name="gemini-1.5-pro")
+# Configure environment variables
+project_id = os.getenv("GCP_PROJECT_ID")
+location = os.getenv("VERTEX_SEARCH_LOCATION", "global")
+
+# Initialize the model with Gemini 3.8 Flash (using GCP Vertex AI instead of Google AI Studio)
+model = Gemini(
+    model="gemini-3.8-flash", 
+    client_kwargs={
+        "vertexai": True,
+        "project": project_id,
+        "location": location
+    }
+)
+data_store_id = os.getenv("VERTEX_DATA_STORE_ID")
+
+# The tool expects the fully qualified resource name
+full_data_store_path = f"projects/{project_id}/locations/{location}/collections/default_collection/dataStores/{data_store_id}"
+
+retrieval_tool = VertexAiSearchTool(
+    data_store_id=full_data_store_path
+)
+
+# Set up the custom MCP server via Stdio
+hr_mcp_toolset = McpToolset(
+    connection_params=StdioServerParameters(
+        command="python",
+        args=["tools.py"],
+    )
+)
 
 # Initialize the core LLM Agent
-# Note: Tools (like the MCP client tools for BigQuery and retrieval) should be passed 
-# in the tools list when fully integrated.
-hr_assistant = LlmAgent(
-    name="MeridianDynamics-HR-Assistant",
+# The built-in retrieval tool is passed securely into the agent.
+hr_assistant = Agent(
+    name="meridian_dynamics_hr_assistant",
     model=model,
-    system_instruction=SYSTEM_INSTRUCTION,
-    tools=[] # TODO: Inject MCP client tools here
+    instruction=SYSTEM_INSTRUCTION,
+    tools=[retrieval_tool, hr_mcp_toolset]
 )
 
 # ---------------------------------------------------------------------------
@@ -51,17 +77,21 @@ session_service = InMemorySessionService()
 # Instantiate the Runner to manage the execution loop, invoking the agent 
 # and maintaining conversation history within the session.
 runner = Runner(
+    app_name="meridian_hr_app",
     agent=hr_assistant,
     session_service=session_service
 )
 
-def main():
+async def main():
     """
     Example execution loop for local testing.
     """
     # Create a new session for this interaction
-    session = session_service.create_session()
-    print(f"Started HR Assistant Session: {session.session_id}")
+    session = await session_service.create_session(
+        app_name="meridian_hr_app",
+        user_id="local_tester"
+    )
+    print(f"Started HR Assistant Session: {session.id}")
     print("HR Assistant: Hello! I am the Meridian Dynamics HR Assistant. How can I help you today?\n")
     
     while True:
@@ -72,12 +102,21 @@ def main():
                 break
                 
             # Run the agent over the user input
-            response = runner.run(session_id=session.session_id, input_text=user_input)
-            print(f"HR Assistant: {response.output_text}\n")
+            events = runner.run_async(
+                user_id="local_tester",
+                session_id=session.id,
+                new_message=to_user_content(user_input)
+            )
+            
+            async for event in events:
+                if getattr(event, 'is_final_response', False) and getattr(event, 'message', None):
+                    text = extract_text_from_content(event.message)
+                    if text.strip():
+                        print(f"HR Assistant: {text}\n")
             
         except KeyboardInterrupt:
             print("\nHR Assistant: Goodbye!")
             break
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
