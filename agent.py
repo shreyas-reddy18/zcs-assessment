@@ -8,8 +8,7 @@ from google.adk import Agent, Runner
 from google.adk.sessions import InMemorySessionService
 from google.adk.models import Gemini
 from google.adk.models.google_llm import GoogleLLMVariant
-from google.adk.tools import VertexAiSearchTool
-from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset
+from google.adk.tools import VertexAiSearchTool, McpToolset
 from mcp.client.stdio import StdioServerParameters
 from google.adk.utils.content_utils import to_user_content, extract_text_from_content
 from dotenv import load_dotenv
@@ -59,7 +58,7 @@ retrieval_tool = VertexAiSearchTool(
 )
 
 # Set up the custom MCP server via Stdio
-hr_mcp_toolset = MCPToolset(
+hr_mcp_toolset = McpToolset(
     connection_params=StdioServerParameters(
         command="python",
         args=["tools.py"],

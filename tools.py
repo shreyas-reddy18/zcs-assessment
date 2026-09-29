@@ -6,7 +6,7 @@ import os
 import uuid
 import sys
 from datetime import datetime, date
-from mcp.server.mcpserver import MCPServer
+from mcp.server import MCPServer
 from auth import authorize_access
 from db import execute_query
 from dotenv import load_dotenv
