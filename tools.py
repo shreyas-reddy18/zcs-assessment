@@ -6,14 +6,14 @@ import os
 import uuid
 import sys
 from datetime import datetime, date
-from mcp.server import Server
+from mcp.server.fastmcp import FastMCP
 from auth import authorize_access
 from db import execute_query
 from dotenv import load_dotenv
 
 load_dotenv()
 
-mcp = MCPServer("HR-Agent-Tools")
+mcp = FastMCP("HR-Agent-Tools")
 
 @mcp.tool()
 def get_employee_id_by_email(email: str) -> str:
