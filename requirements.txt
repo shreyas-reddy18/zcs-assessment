@@ -4,3 +4,4 @@ google-cloud-bigquery
 google-auth
 python-dotenv
 mcp
+google-adk

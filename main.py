@@ -25,6 +25,16 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # For dev purposes
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.get("/health")
 async def health_check():
     """Basic health-check endpoint to verify the server is running."""
@@ -44,6 +54,64 @@ async def verify_auth(email: str = Depends(get_current_user_email)):
         "email": email,
         "identity": identity
     }
+    
+from pydantic import BaseModel
+from agent import hr_assistant, runner
 
-# Provide an SSE endpoint for MCP clients
-app.mount("/mcp", mcp.asgi())
+class ChatRequest(BaseModel):
+    message: str
+
+@app.post("/api/chat")
+async def chat_endpoint(request: ChatRequest, email: str = Depends(get_current_user_email)):
+    """
+    Receives a message from the React frontend, extracts the verified email 
+    from the Authorization header, and passes both to the ADK agent.
+    """
+    from agent import SYSTEM_INSTRUCTION
+    
+    # Create a dynamic instruction by combining the base persona with the authenticated user
+    dynamic_instruction = f"{SYSTEM_INSTRUCTION}\n\n[Security Context]\nThe current authenticated user is: {email}"
+    
+    # We update the agent's system instruction per user session
+    hr_assistant.instruction = dynamic_instruction
+    
+    # Run the agent synchronously using the runner
+    # We use a unique session ID based on the user's email to maintain state
+    session_id = f"session_{email}"
+    
+    try:
+        from agent import session_service
+        # Check if the session exists; if not, create it
+        session = await session_service.get_session(
+            app_name="meridian_hr_app",
+            user_id=email,
+            session_id=session_id
+        )
+        if session is None:
+            await session_service.create_session(
+                app_name="meridian_hr_app",
+                user_id=email,
+                session_id=session_id
+            )
+            
+        from google.adk.utils.content_utils import to_user_content, extract_text_from_content
+        # Run the agent
+        events = runner.run_async(
+            user_id=email,
+            session_id=session_id,
+            new_message=to_user_content(request.message)
+        )
+        
+        final_text = ""
+        async for event in events:
+            if getattr(event, 'is_final_response', False) and getattr(event, 'message', None):
+                # Extract text using ADK's utility
+                text = extract_text_from_content(event.message)
+                if text.strip():
+                    final_text = text
+                    
+        return {"response": final_text, "email": email}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"response": f"Error processing your request: {str(e)}"}

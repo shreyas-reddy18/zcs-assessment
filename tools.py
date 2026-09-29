@@ -11,10 +11,8 @@ from auth import authorize_access
 from db import execute_query
 from dotenv import load_dotenv
 
-# Load environment variables for the MCP Server process
 load_dotenv()
 
-# Initialize MCP server instance
 mcp = MCPServer("HR-Agent-Tools")
 
 @mcp.tool()
@@ -33,15 +31,15 @@ def get_employee_id_by_email(email: str) -> str:
 @mcp.tool()
 def get_personal_record(target_employee_id: str, current_user_email: str) -> dict:
     """
-    Fetches PTO balance, YTD usage, and employee details.
-    Enforces authorization boundaries based on the current user's email.
+    Fetches PTO balance, YTD usage, and employee details for a specific employee.
+    Enforces authorization: users can view their own record, managers can view direct reports,
+    and People Ops can view all.
     """
-    # Enforce authorization
     authorize_access(current_user_email, target_employee_id)
     
     dataset = os.getenv("BQ_DATASET", "hr_dataset")
     query = f"""
-        SELECT employee_id, full_name, department, pto_balance_days, pto_used_ytd
+        SELECT employee_id, full_name, department, job_title, pto_balance_days, pto_used_ytd
         FROM `{dataset}.employees`
         WHERE employee_id = @employee_id
     """
@@ -51,17 +49,39 @@ def get_personal_record(target_employee_id: str, current_user_email: str) -> dic
     return results[0]
 
 @mcp.tool()
+def get_direct_reports(current_user_email: str) -> list[dict]:
+    """
+    Retrieves the list and PTO details of all direct reports for the authenticated manager.
+    Returns an empty list if the user has no direct reports.
+    """
+    dataset = os.getenv("BQ_DATASET", "hr_dataset")
+    
+    # 1. Resolve manager's employee_id from email
+    id_query = f"SELECT employee_id FROM `{dataset}.identity_map` WHERE google_email = @email"
+    id_res = execute_query(id_query, {"email": current_user_email})
+    if not id_res:
+        return []
+    manager_id = id_res[0]["employee_id"]
+    
+    # 2. Query all employees managed by this ID
+    query = f"""
+        SELECT employee_id, full_name, department, job_title, pto_balance_days, pto_used_ytd
+        FROM `{dataset}.employees`
+        WHERE manager_id = @manager_id
+    """
+    return execute_query(query, {"manager_id": manager_id})
+
+@mcp.tool()
 def get_pending_requests(target_employee_id: str, current_user_email: str) -> list[dict]:
     """
     Fetches pending and approved leave requests from the pto_requests table.
     Enforces authorization boundaries based on the current user's email.
     """
-    # Enforce authorization
     authorize_access(current_user_email, target_employee_id)
     
     dataset = os.getenv("BQ_DATASET", "hr_dataset")
     query = f"""
-        SELECT request_id, start_date, end_date, status, request_type
+        SELECT request_id, employee_id, start_date, end_date, days_requested, status
         FROM `{dataset}.pto_requests`
         WHERE employee_id = @employee_id AND status IN ('pending', 'approved')
     """
@@ -93,7 +113,6 @@ def validate_pto_policy(start_date_str: str, end_date_str: str, days_requested: 
         if lead_time_days < 14:
             return {"passed": False, "reason": "Minimum 2 weeks notice required for 3+ consecutive days of leave."}
             
-        # Blackout period check (July 7-18, 2026)
         blackout_start = date(2026, 7, 7)
         blackout_end = date(2026, 7, 18)
         if max(start_date, blackout_start) <= min(end_date, blackout_end):
@@ -118,7 +137,6 @@ def validate_pto_request(target_employee_id: str, current_user_email: str, start
         return {"passed": False, "reason": "Employee not found."}
         
     current_balance = results[0]["pto_balance_days"]
-    
     validation = validate_pto_policy(start_date, end_date, days_requested, current_balance)
     
     if validation["passed"]:
@@ -149,10 +167,8 @@ def submit_pto_request(
         return {"error": "Submission aborted. User confirmation is required."}
         
     authorize_access(current_user_email, target_employee_id)
-    
     dataset = os.getenv("BQ_DATASET", "hr_dataset")
     
-    # Idempotency Check: query for exact match pending/approved request
     check_query = f"""
         SELECT request_id, start_date, end_date, status
         FROM `{dataset}.pto_requests`
@@ -174,16 +190,13 @@ def submit_pto_request(
             "record": existing[0]
         }
         
-    # Re-verify balance just to be safe at write time
     balance_query = f"SELECT pto_balance_days FROM `{dataset}.employees` WHERE employee_id = @employee_id"
     balance_res = execute_query(balance_query, {"employee_id": target_employee_id})
     if not balance_res or balance_res[0]["pto_balance_days"] < days_requested:
          return {"error": "Write failed: Insufficient PTO balance."}
          
-    # Execute atomic transaction
     request_id = str(uuid.uuid4())
     
-    # BigQuery Multi-statement Transaction
     transaction_sql = f"""
         BEGIN TRANSACTION;
         
