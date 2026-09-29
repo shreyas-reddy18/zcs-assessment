@@ -4,5 +4,5 @@ google-cloud-bigquery
 google-auth
 python-dotenv
 mcp>=2.0.0
-google-adk
-google-adk[mcp]
+google-adk==1.14.1
+google-adk[mcp]==1.14.1
