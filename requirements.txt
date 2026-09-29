@@ -5,3 +5,4 @@ google-auth
 python-dotenv
 mcp
 google-adk
+google-adk[mcp]
