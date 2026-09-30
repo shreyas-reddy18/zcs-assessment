@@ -115,11 +115,7 @@ def validate_pto_policy(start_date_str: str, end_date_str: str, days_requested: 
     else:
         if lead_time_days < 14:
             return {"passed": False, "reason": "Minimum 2 weeks notice required for 3+ consecutive days of leave."}
-            
-        blackout_start = date(2026, 7, 7)
-        blackout_end = date(2026, 7, 18)
-        if max(start_date, blackout_start) <= min(end_date, blackout_end):
-            return {"passed": False, "reason": "Requests exceeding 2 consecutive days fall within the Summer Product Launch blackout period."}
+
             
     return {"passed": True, "reason": "Policy checks passed."}
 
