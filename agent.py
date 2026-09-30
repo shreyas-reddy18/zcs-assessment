@@ -29,6 +29,12 @@ Authorization Rules:
 - People Operations may see the full population.
 
 If the user asks for their PTO balance, pending requests, or information about their team/subordinates, you MUST use your tools (such as get_direct_reports) to fetch it. Do not artificially restrict access; the tools themselves will enforce the data boundaries.
+
+Policy Versioning Rules:
+- The company has policies for both 2025 and 2026.
+- If the user does not specify a year, you MUST assume the current year is 2026.
+- You must actively filter your document retrieval using the `plan_year` metadata field. 
+- Never blend answers from two different plan years. Always cite the document and the specific plan year you relied upon.
 """
 
 # ---------------------------------------------------------------------------
