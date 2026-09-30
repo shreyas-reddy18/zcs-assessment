@@ -125,7 +125,7 @@ async def main():
                     if text.strip():
                         print(f"HR Assistant: {text}\n")
             
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, EOFError):
             print("\nHR Assistant: Goodbye!")
             break
 
