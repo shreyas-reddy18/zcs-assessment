@@ -28,7 +28,7 @@ def get_employee_id_by_email(email: str) -> str:
     query = f"SELECT employee_id FROM `{dataset}.identity_map` WHERE google_email = @email"
     results = execute_query(query, {"email": email})
     if not results:
-        return "Employee ID not found for this email."
+        raise ValueError(f"HTTP 403: User {email} not found in identity map. Access Denied.")
     return str(results[0]["employee_id"])
 
 @mcp.tool()
@@ -48,7 +48,7 @@ def get_personal_record(target_employee_id: str, current_user_email: str) -> dic
     """
     results = execute_query(query, {"employee_id": target_employee_id})
     if not results:
-        return {"error": "Employee not found"}
+        raise ValueError(f"Target employee ID {target_employee_id} not found in the database.")
     return results[0]
 
 @mcp.tool()

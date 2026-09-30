@@ -63,10 +63,15 @@ class ChatRequest(BaseModel):
 
 @app.post("/api/chat")
 async def chat_endpoint(request: ChatRequest, email: str = Depends(get_current_user_email)):
-    """
-    Receives a message from the React frontend, extracts the verified email 
-    from the Authorization header, and passes both to the ADK agent.
-    """
+    # 1. HARD BLOCK UNMAPPED USERS IMMEDIATELY
+    # This imports your existing auth function. If the email isn't in BigQuery, 
+    # it automatically throws a 403 error and stops execution.
+    from auth import get_user_identity
+    try:
+        identity = get_user_identity(email)
+    except Exception as e:
+        return {"response": f"Access Denied: Your email ({email}) is not registered in the HR database."}
+    
     from agent import SYSTEM_INSTRUCTION
     
     # Create a dynamic instruction by combining the base persona with the authenticated user
@@ -75,9 +80,8 @@ async def chat_endpoint(request: ChatRequest, email: str = Depends(get_current_u
     # We update the agent's system instruction per user session
     hr_assistant.instruction = dynamic_instruction
     
-    # Run the agent synchronously using the runner
-    # We use a unique session ID based on the user's email to maintain state
-    session_id = f"session_{email}"
+    # Use your stable session prefix
+    session_id = f"demo_v1_{email}"
     
     try:
         from agent import session_service
