@@ -13,7 +13,43 @@ The agent allows employees to ask questions about company policy, query their pe
 - **Deployment Endpoint:** Deployed on Google Cloud Run (`zcs-assessment`)
 
 ## 2. Architecture & Technology Choices
+### Architecture Diagram
 
+```mermaid
+graph TD
+    %% Define Styles
+    classDef frontend fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
+    classDef backend fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff
+    classDef data fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff
+    classDef gcp fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#fff
+
+    subgraph Client [Client Layer]
+        UI[React + Vite UI]:::frontend
+        Auth[Google Sign-In / OAuth 2.0]:::frontend
+        UI -->|Authenticates| Auth
+    end
+
+    subgraph CloudRun [Google Cloud Run Deployment]
+        API[FastAPI Server]:::backend
+        Agent[Google ADK + Gemini]:::backend
+        MCP[Custom MCP Server]:::backend
+        
+        Auth -->|Passes User Identity| API
+        UI -->|Sends Natural Language Query| API
+        API -->|Binds Context & Session| Agent
+        Agent <-->|Tool Execution Requests| MCP
+    end
+
+    subgraph GCP [Google Cloud Data & AI Services]
+        BQ[(BigQuery Warehouse\nIdentity, Balances, PTO)]:::data
+        Vertex[Vertex AI Search\nData Store]:::gcp
+        GCS[Cloud Storage Bucket\nPDFs & manifest.jsonl]:::gcp
+        
+        MCP <-->|Idempotent Writes & Reads| BQ
+        Agent <-->|Query + Metadata Filter| Vertex
+        GCS -->|Ingests Versioned Documents| Vertex
+    end
+```
 ### Tech Stack
 - **AI Framework**: Google Agent Development Kit (ADK) using Gemini 3.8 Flash.
 - **Frontend**: React + Vite, providing a clean chat interface with Google Sign-In (OAuth 2.0).
