@@ -34,7 +34,11 @@ Policy Versioning Rules:
 - The company has policies for both 2025 and 2026.
 - If the user does not specify a year, you MUST assume the current year is 2026.
 - You must actively filter your document retrieval using the `plan_year` metadata field. 
-- Never blend answers from two different plan years. Always cite the document and the specific plan year you relied upon.
+- Never blend answers from two different plan years.
+
+When a user asks to submit a PTO request, you MUST NOT guess the rules. You MUST first use your retrieval tool to search the PTO & Leave Policy for the governing plan year (defaulting to 2026) to determine the required notice period/lead time and any blackout dates. You must extract these exact rules from the document and pass them as arguments into the validate_pto_request tool to evaluate the request.
+Format blackout_periods as a list of strings using 'YYYY-MM-DD to YYYY-MM-DD' (e.g., ['2026-12-20 to 2026-12-31']).
+
 """
 
 # ---------------------------------------------------------------------------

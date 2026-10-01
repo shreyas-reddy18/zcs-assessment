@@ -91,7 +91,7 @@ def get_pending_requests(target_employee_id: str, current_user_email: str) -> li
     results = execute_query(query, {"employee_id": target_employee_id})
     return results
 
-def validate_pto_policy(start_date_str: str, end_date_str: str, days_requested: int, current_balance: int) -> dict:
+def validate_pto_policy(start_date_str: str, end_date_str: str, days_requested: int, current_balance: int, required_lead_time_days: int, blackout_periods: list[str]) -> dict:
     """Evaluates PTO request against corporate policy rules."""
     try:
         start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
@@ -109,18 +109,36 @@ def validate_pto_policy(start_date_str: str, end_date_str: str, days_requested: 
         
     lead_time_days = (start_date - today).days
     
-    if days_requested <= 2:
-        if lead_time_days < 2:
-            return {"passed": False, "reason": "Minimum 48 hours notice required for 1-2 days of leave."}
-    else:
-        if lead_time_days < 14:
-            return {"passed": False, "reason": "Minimum 2 weeks notice required for 3+ consecutive days of leave."}
+    if lead_time_days < required_lead_time_days:
+        return {"passed": False, "reason": f"Minimum {required_lead_time_days} days notice required."}
 
+    for bp in blackout_periods:
+        try:
+            if " to " in bp:
+                b_start_str, b_end_str = bp.split(" to ")
+                b_start = datetime.strptime(b_start_str.strip(), "%Y-%m-%d").date()
+                b_end = datetime.strptime(b_end_str.strip(), "%Y-%m-%d").date()
+            else:
+                b_start = datetime.strptime(bp.strip(), "%Y-%m-%d").date()
+                b_end = b_start
+            
+            if start_date <= b_end and end_date >= b_start:
+                return {"passed": False, "reason": f"Requested dates overlap with blackout period: {bp}"}
+        except ValueError:
+            pass
             
     return {"passed": True, "reason": "Policy checks passed."}
 
 @mcp.tool()
-def validate_pto_request(target_employee_id: str, current_user_email: str, start_date: str, end_date: str, days_requested: int) -> dict:
+def validate_pto_request(
+    target_employee_id: str, 
+    current_user_email: str, 
+    start_date: str, 
+    end_date: str, 
+    days_requested: int,
+    required_lead_time_days: int,
+    blackout_periods: list[str]
+) -> dict:
     """
     Step 1 of PTO submission: Validates a PTO request against corporate policy.
     The agent MUST present the summary returned by this tool to the user and prompt for explicit confirmation 
@@ -136,7 +154,7 @@ def validate_pto_request(target_employee_id: str, current_user_email: str, start
         return {"passed": False, "reason": "Employee not found."}
         
     current_balance = results[0]["pto_balance_days"]
-    validation = validate_pto_policy(start_date, end_date, days_requested, current_balance)
+    validation = validate_pto_policy(start_date, end_date, days_requested, current_balance, required_lead_time_days, blackout_periods)
     
     if validation["passed"]:
         validation["summary"] = {
