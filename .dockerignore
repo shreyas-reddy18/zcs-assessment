@@ -1,0 +1,7 @@
+credentials.json
+.env
+.git
+__pycache__
+*.pyc
+.gitignore
+frontend/

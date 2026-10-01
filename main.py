@@ -67,10 +67,18 @@ async def chat_endpoint(request: ChatRequest, email: str = Depends(get_current_u
     # This imports your existing auth function. If the email isn't in BigQuery, 
     # it automatically throws a 403 error and stops execution.
     from auth import get_user_identity
+    from fastapi import HTTPException
+
     try:
         identity = get_user_identity(email)
-    except Exception as e:
-        return {"response": f"Access Denied: Your email ({email}) is not registered in the HR database."}
+    except HTTPException as e:
+        if e.status_code == 403:
+            return {"response": "This email is not associated with an employee."}
+        raise e
+    
+    # THE MISSING PIECE: Manually trigger the rejection if the result is empty/None
+    if not identity or (isinstance(identity, dict) and "employee_id" not in identity):
+        return {"response": "This email is not associated with an employee."}
     
     from agent import SYSTEM_INSTRUCTION
     
@@ -81,7 +89,7 @@ async def chat_endpoint(request: ChatRequest, email: str = Depends(get_current_u
     hr_assistant.instruction = dynamic_instruction
     
     # Use your stable session prefix
-    session_id = f"demo_v1_{email}"
+    session_id = f"demo_v2_{email}"
     
     try:
         from agent import session_service
