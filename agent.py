@@ -9,7 +9,7 @@ from google.adk.sessions import InMemorySessionService
 from google.adk.models import Gemini
 from google.adk.models.google_llm import GoogleLLMVariant
 from google.adk.tools import VertexAiSearchTool, McpToolset
-from mcp.client.stdio import StdioServerParameters
+
 from google.adk.utils.content_utils import to_user_content, extract_text_from_content
 from dotenv import load_dotenv
 
@@ -39,6 +39,7 @@ Policy Versioning Rules:
 When a user asks to submit a PTO request, you MUST NOT guess the rules. You MUST first use your retrieval tool to search the PTO & Leave Policy for the governing plan year (defaulting to 2026) to determine the required notice period/lead time and any blackout dates. You must extract these exact rules from the document and pass them as arguments into the validate_pto_request tool to evaluate the request.
 Format blackout_periods as a list of strings using 'YYYY-MM-DD to YYYY-MM-DD' (e.g., ['2026-12-20 to 2026-12-31']).
 
+You will be provided with the current authenticated user's email in your Security Context. You MUST pass this exact email string into the current_user_email parameter of every tool you call.
 """
 
 # ---------------------------------------------------------------------------
@@ -67,11 +68,12 @@ retrieval_tool = VertexAiSearchTool(
     data_store_id=full_data_store_path
 )
 
-# Set up the custom MCP server via Stdio
+from google.adk.tools.mcp_tool import SseConnectionParams
+
+# Set up the custom MCP server via SSE
 hr_mcp_toolset = McpToolset(
-    connection_params=StdioServerParameters(
-        command="python",
-        args=["tools.py"],
+    connection_params=SseConnectionParams(
+        url="https://PLACEHOLDER-mcp-server.run.app/sse"
     )
 )
 

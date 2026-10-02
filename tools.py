@@ -15,7 +15,7 @@ load_dotenv()
 from mcp.server.fastmcp import FastMCP
 mcp = FastMCP("HR-Agent-Tools")
 
-
+@mcp.tool()
 def get_employee_id_by_email(email: str) -> str:
     """
     Looks up an employee_id given their Google email address.
@@ -28,7 +28,7 @@ def get_employee_id_by_email(email: str) -> str:
         raise ValueError(f"HTTP 403: User {email} not found in identity map. Access Denied.")
     return str(results[0]["employee_id"])
 
-
+@mcp.tool()
 def get_personal_record(target_employee_id: str, current_user_email: str) -> dict:
     """
     Fetches PTO balance, YTD usage, and employee details for a specific employee.
@@ -48,7 +48,7 @@ def get_personal_record(target_employee_id: str, current_user_email: str) -> dic
         raise ValueError(f"Target employee ID {target_employee_id} not found in the database.")
     return results[0]
 
-
+@mcp.tool()
 def get_direct_reports(current_user_email: str) -> list[dict]:
     """
     Retrieves the list and PTO details of all direct reports for the authenticated manager.
@@ -72,6 +72,7 @@ def get_direct_reports(current_user_email: str) -> list[dict]:
     return execute_query(query, {"manager_id": manager_id})
 
 
+@mcp.tool()
 def get_pending_requests(target_employee_id: str, current_user_email: str) -> list[dict]:
     """
     Fetches pending and approved leave requests from the pto_requests table.
@@ -87,6 +88,7 @@ def get_pending_requests(target_employee_id: str, current_user_email: str) -> li
     """
     results = execute_query(query, {"employee_id": target_employee_id})
     return results
+
 
 def validate_pto_policy(start_date_str: str, end_date_str: str, days_requested: int, current_balance: int, required_lead_time_days: int, blackout_periods: list[str]) -> dict:
     """Evaluates PTO request against corporate policy rules."""
@@ -127,6 +129,8 @@ def validate_pto_policy(start_date_str: str, end_date_str: str, days_requested: 
     return {"passed": True, "reason": "Policy checks passed."}
 
 
+
+@mcp.tool()
 def validate_pto_request(
     target_employee_id: str, 
     current_user_email: str, 
@@ -163,7 +167,7 @@ def validate_pto_request(
         
     return validation
 
-
+@mcp.tool()
 def submit_pto_request(
     target_employee_id: str, 
     current_user_email: str, 
