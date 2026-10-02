@@ -46,21 +46,22 @@ Format blackout_periods as a list of strings using 'YYYY-MM-DD to YYYY-MM-DD' (e
 # ---------------------------------------------------------------------------
 # Configure environment variables
 project_id = os.getenv("GCP_PROJECT_ID")
-location = os.getenv("VERTEX_SEARCH_LOCATION", "global")
+search_location = os.getenv("VERTEX_SEARCH_LOCATION", "global")
+model_location = os.getenv("GCP_REGION", "us-central1")
 
-# Initialize the model with Gemini 3.8 Flash (using GCP Vertex AI instead of Google AI Studio)
+# Initialize the model with Gemini 1.5 Flash (using GCP Vertex AI instead of Google AI Studio)
 model = Gemini(
-    model="gemini-3.8-flash", 
+    model="gemini-1.5-flash", 
     client_kwargs={
         "vertexai": True,
         "project": project_id,
-        "location": location
+        "location": model_location
     }
 )
 data_store_id = os.getenv("VERTEX_DATA_STORE_ID")
 
 # The tool expects the fully qualified resource name
-full_data_store_path = f"projects/{project_id}/locations/{location}/collections/default_collection/dataStores/{data_store_id}"
+full_data_store_path = f"projects/{project_id}/locations/{search_location}/collections/default_collection/dataStores/{data_store_id}"
 
 retrieval_tool = VertexAiSearchTool(
     data_store_id=full_data_store_path

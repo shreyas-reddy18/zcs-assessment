@@ -12,6 +12,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from mcp.server.fastmcp import FastMCP
+mcp = FastMCP("HR-Agent-Tools")
+
 
 def get_employee_id_by_email(email: str) -> str:
     """
