@@ -14,7 +14,6 @@ The agent allows employees to ask questions about company policy, query their pe
 
 ## 2. Architecture & Technology Choices
 ### Architecture Diagram
-
 ```mermaid
 graph TD
     %% Define Styles
@@ -26,7 +25,8 @@ graph TD
     subgraph Client [Client Layer]
         UI[React + Vite UI]:::frontend
         Auth[Google Sign-In / OAuth 2.0]:::frontend
-        UI -->|Authenticates| Auth
+        UI -->|1. Authenticates| Auth
+        Auth -->|2. Returns Auth Token| UI
     end
 
     subgraph CloudRun [Google Cloud Run Deployment]
@@ -34,10 +34,9 @@ graph TD
         Agent[Google ADK + Gemini]:::backend
         MCP[Custom MCP Server]:::backend
         
-        Auth -->|Passes User Identity| API
-        UI -->|Sends Natural Language Query| API
-        API -->|Binds Context & Session| Agent
-        Agent <-->|Tool Execution Requests| MCP
+        UI -->|3. Sends Query + Auth Token| API
+        API -->|4. Binds Context & Session| Agent
+        Agent <-->|5. Tool Execution Requests| MCP
     end
 
     subgraph GCP [Google Cloud Data & AI Services]
@@ -45,7 +44,8 @@ graph TD
         Vertex[Vertex AI Search\nData Store]:::gcp
         GCS[Cloud Storage Bucket\nPDFs & manifest.jsonl]:::gcp
         
-        MCP <-->|Idempotent Writes & Reads| BQ
+        API <-->|Resolves Token Email to Employee ID| BQ
+        MCP <-->|Tool-Level Auth & Idempotent Writes| BQ
         Agent <-->|Query + Metadata Filter| Vertex
         GCS -->|Ingests Versioned Documents| Vertex
     end
