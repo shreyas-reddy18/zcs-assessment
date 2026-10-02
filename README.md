@@ -23,16 +23,16 @@ graph TD
     classDef gcp fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#fff
 
     subgraph Client [Client Layer]
-        UI[React + Vite UI]:::frontend
-        Auth[Google Sign-In / OAuth 2.0]:::frontend
+        UI["React + Vite UI"]:::frontend
+        Auth["Google Sign-In / OAuth 2.0"]:::frontend
         UI -->|1. Authenticates| Auth
         Auth -->|2. Returns Auth Token| UI
     end
 
     subgraph CloudRun [Google Cloud Run Deployment]
-        API[FastAPI Server]:::backend
-        Agent[Google ADK + Gemini]:::backend
-        MCP[Custom MCP Server]:::backend
+        API["FastAPI Server"]:::backend
+        Agent["Google ADK + Gemini"]:::backend
+        MCP["Custom MCP Server"]:::backend
         
         UI -->|3. Sends Query + Auth Token| API
         API -->|4. Binds Context & Session| Agent
@@ -40,9 +40,9 @@ graph TD
     end
 
     subgraph GCP [Google Cloud Data & AI Services]
-        BQ[(BigQuery Warehouse\nIdentity, Balances, PTO)]:::data
-        Vertex[Vertex AI Search\nData Store]:::gcp
-        GCS[Cloud Storage Bucket\nPDFs & manifest.jsonl]:::gcp
+        BQ[("BigQuery Warehouse<br>Identity, Balances, PTO")]:::data
+        Vertex["Vertex AI Search<br>Data Store"]:::gcp
+        GCS["Cloud Storage Bucket<br>PDFs & manifest.jsonl"]:::gcp
         
         API <-->|Resolves Token Email to Employee ID| BQ
         MCP <-->|Tool-Level Auth & Idempotent Writes| BQ
