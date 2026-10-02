@@ -1,31 +1,22 @@
 import os
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from pydantic import BaseModel
+from typing import List
+
 from auth import get_current_user_email, get_user_identity
-from tools import mcp
+import tools
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Initialize MCP server and other resources during startup
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup: Initialize MCP server, BigQuery client, etc.
-    print("Starting up HR MCP Server...")
-    yield
-    # Shutdown: Clean up resources
-    print("Shutting down HR MCP Server...")
-
 # Initialize FastAPI app
 app = FastAPI(
-    title="HR Conversational Knowledge Agent MCP Server",
-    description="Tooling layer for HR agent querying BigQuery with OAuth 2.0",
-    version="0.1.0",
-    lifespan=lifespan
+    title="HR Tool Execution API",
+    description="Backend tool-executor for Vertex AI Reasoning Engine querying BigQuery with OAuth 2.0",
+    version="0.2.0"
 )
-
-from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,76 +45,93 @@ async def verify_auth(email: str = Depends(get_current_user_email)):
         "email": email,
         "identity": identity
     }
-    
-from pydantic import BaseModel
-from agent import hr_assistant, runner
 
-class ChatRequest(BaseModel):
-    message: str
+# --- Pydantic Models for Tool Requests ---
 
-@app.post("/api/chat")
-async def chat_endpoint(request: ChatRequest, email: str = Depends(get_current_user_email)):
-    # 1. HARD BLOCK UNMAPPED USERS IMMEDIATELY
-    # This imports your existing auth function. If the email isn't in BigQuery, 
-    # it automatically throws a 403 error and stops execution.
-    from auth import get_user_identity
-    from fastapi import HTTPException
+class GetPersonalRecordRequest(BaseModel):
+    target_employee_id: str
 
+class GetPendingRequestsRequest(BaseModel):
+    target_employee_id: str
+
+class ValidatePTORequest(BaseModel):
+    target_employee_id: str
+    start_date: str
+    end_date: str
+    days_requested: int
+    required_lead_time_days: int
+    blackout_periods: List[str]
+
+class SubmitPTORequest(BaseModel):
+    target_employee_id: str
+    start_date: str
+    end_date: str
+    days_requested: int
+    request_type: str
+    user_confirmed: bool
+
+# --- Tool Execution Endpoints ---
+
+@app.post("/api/tools/get_employee_id")
+async def api_get_employee_id(email: str = Depends(get_current_user_email)):
     try:
-        identity = get_user_identity(email)
-    except HTTPException as e:
-        if e.status_code == 403:
-            return {"response": "This email is not associated with an employee."}
-        raise e
-    
-    # THE MISSING PIECE: Manually trigger the rejection if the result is empty/None
-    if not identity or (isinstance(identity, dict) and "employee_id" not in identity):
-        return {"response": "This email is not associated with an employee."}
-    
-    from agent import SYSTEM_INSTRUCTION
-    
-    # Create a dynamic instruction by combining the base persona with the authenticated user
-    dynamic_instruction = f"{SYSTEM_INSTRUCTION}\n\n[Security Context]\nThe current authenticated user is: {email}"
-    
-    # We update the agent's system instruction per user session
-    hr_assistant.instruction = dynamic_instruction
-    
-    # Use your stable session prefix
-    session_id = f"demo_v2_{email}"
-    
-    try:
-        from agent import session_service
-        # Check if the session exists; if not, create it
-        session = await session_service.get_session(
-            app_name="meridian_hr_app",
-            user_id=email,
-            session_id=session_id
-        )
-        if session is None:
-            await session_service.create_session(
-                app_name="meridian_hr_app",
-                user_id=email,
-                session_id=session_id
-            )
-            
-        from google.adk.utils.content_utils import to_user_content, extract_text_from_content
-        # Run the agent
-        events = runner.run_async(
-            user_id=email,
-            session_id=session_id,
-            new_message=to_user_content(request.message)
-        )
-        
-        final_text = ""
-        async for event in events:
-            if getattr(event, 'is_final_response', False) and getattr(event, 'message', None):
-                # Extract text using ADK's utility
-                text = extract_text_from_content(event.message)
-                if text.strip():
-                    final_text = text
-                    
-        return {"response": final_text, "email": email}
+        employee_id = tools.get_employee_id_by_email(email)
+        return {"employee_id": employee_id}
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {"response": f"Error processing your request: {str(e)}"}
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/tools/get_personal_record")
+async def api_get_personal_record(request: GetPersonalRecordRequest, email: str = Depends(get_current_user_email)):
+    try:
+        result = tools.get_personal_record(request.target_employee_id, email)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/tools/get_direct_reports")
+async def api_get_direct_reports(email: str = Depends(get_current_user_email)):
+    try:
+        result = tools.get_direct_reports(email)
+        return {"direct_reports": result}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/tools/get_pending_requests")
+async def api_get_pending_requests(request: GetPendingRequestsRequest, email: str = Depends(get_current_user_email)):
+    try:
+        result = tools.get_pending_requests(request.target_employee_id, email)
+        return {"pending_requests": result}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/tools/validate_pto_request")
+async def api_validate_pto_request(request: ValidatePTORequest, email: str = Depends(get_current_user_email)):
+    try:
+        result = tools.validate_pto_request(
+            target_employee_id=request.target_employee_id,
+            current_user_email=email,
+            start_date=request.start_date,
+            end_date=request.end_date,
+            days_requested=request.days_requested,
+            required_lead_time_days=request.required_lead_time_days,
+            blackout_periods=request.blackout_periods
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/tools/submit_pto_request")
+async def api_submit_pto_request(request: SubmitPTORequest, email: str = Depends(get_current_user_email)):
+    try:
+        result = tools.submit_pto_request(
+            target_employee_id=request.target_employee_id,
+            current_user_email=email,
+            start_date=request.start_date,
+            end_date=request.end_date,
+            days_requested=request.days_requested,
+            request_type=request.request_type,
+            user_confirmed=request.user_confirmed
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
