@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 import vertexai
 from vertexai import agent_engines
+from vertexai.preview import reasoning_engines
 from agent import hr_assistant
 
 # Load environment variables
@@ -15,27 +16,32 @@ def deploy():
         raise ValueError("GCP_PROJECT_ID must be set in the environment.")
         
     print(f"Initializing Vertex AI in project {project_id}, region {location}...")
-    vertexai.init(project=project_id, location=location)
+    vertexai.init(
+        project=project_id, 
+        location=location,
+        staging_bucket="gs://meridian-dynamics-policies-corpus" # Added your bucket from the previous script
+    )
     
     print("Wrapping ADK agent in AdkApp...")
-    # Wrap the agent.py hr_assistant in the AdkApp deployment wrapper
     app = agent_engines.AdkApp(agent=hr_assistant)
     
     print("Deploying to Vertex AI Agent Engine...")
-    remote_app = agent_engines.ReasoningEngine.create(
-        app,
+    remote_app = reasoning_engines.ReasoningEngine.create(
+        reasoning_engine=app,
         display_name="Meridian HR Assistant",
-        description="Conversational HR Assistant powered by ADK and Gemini 3.8 Flash",
-        # Dependencies to package with the deployment
+        description="Conversational HR Assistant powered by ADK and Gemini 1.5 Pro",
         requirements=[
-            "google-adk",
-            "mcp",
+            "google-adk>=2.10.0",
+            "mcp<2.0.0",
             "google-cloud-aiplatform",
             "python-dotenv"
         ]
     )
     
-    print(f"Deployment complete! Reasoning Engine ID: {remote_app.resource_name}")
+    print("==================================================")
+    print("🚀 Deployment Successful!")
+    print(f"Resource Name: {remote_app.resource_name}")
+    print("==================================================")
 
 if __name__ == "__main__":
     deploy()

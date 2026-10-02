@@ -73,7 +73,7 @@ from google.adk.tools.mcp_tool import SseConnectionParams
 # Set up the custom MCP server via SSE
 hr_mcp_toolset = McpToolset(
     connection_params=SseConnectionParams(
-        url="https://PLACEHOLDER-mcp-server.run.app/sse"
+        url="https://zcs-assessment-782492088107.us-central1.run.app/sse"
     )
 )
 
