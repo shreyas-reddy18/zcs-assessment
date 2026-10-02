@@ -3,5 +3,5 @@ uvicorn
 google-cloud-bigquery
 google-auth
 python-dotenv
-mcp>=2.0.0
+mcp<2.0.0
 google-adk>=2.10.0
