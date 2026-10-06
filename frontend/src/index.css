@@ -278,3 +278,56 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
+
+/* Header controls */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.link-button {
+  background: none;
+  border: 1px solid var(--surface-border);
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.link-button:hover:not(:disabled) {
+  color: var(--text-main);
+}
+
+/* Markdown inside assistant messages */
+.message-bubble p + p,
+.message-bubble ul,
+.message-bubble ol,
+.message-bubble table {
+  margin-top: 8px;
+}
+
+.message-bubble ul,
+.message-bubble ol {
+  padding-left: 20px;
+}
+
+.message-bubble table {
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.message-bubble th,
+.message-bubble td {
+  border: 1px solid var(--surface-border);
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.tools-used {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}

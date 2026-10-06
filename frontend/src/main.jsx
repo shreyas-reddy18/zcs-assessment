@@ -1,15 +1,15 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 import App from './App.jsx'
 import './index.css'
-import { GoogleOAuthProvider } from '@react-oauth/google'
 
-// Normally this comes from env, but we'll use a placeholder if missing
-const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'your-oauth-client-id'
+// The OAuth client ID is served by the gateway, so one build works in every environment.
+const { google_client_id } = await fetch('/api/config').then((r) => r.json())
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={clientId}>
+    <GoogleOAuthProvider clientId={google_client_id}>
       <App />
     </GoogleOAuthProvider>
   </React.StrictMode>,

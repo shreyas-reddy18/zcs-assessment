@@ -1,108 +1,104 @@
 import { useState, useRef, useEffect } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
+import { GoogleLogin, googleLogout } from '@react-oauth/google';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
-// Helper to decode JWT payload safely
-function decodeJwt(token) {
+const GREETING = {
+  role: 'ai',
+  text: 'Hello! I can answer questions about Meridian Dynamics policies and your PTO, and submit PTO requests for you.',
+};
+
+function emailFromIdToken(token) {
   try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    console.error('Failed to decode JWT', e);
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(payload)).email;
+  } catch {
     return null;
   }
 }
 
-export default function App() {
-  const [authData, setAuthData] = useState(null); // { token, email, name }
-  const [messages, setMessages] = useState([
-    { role: 'ai', text: 'Hello! I am the Meridian Dynamics HR Assistant. How can I help you today?' }
-  ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef(null);
+async function api(path, token, body) {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body ?? {}),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.detail || `Server returned ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
 
-  // Auto-scroll to bottom of chat
+export default function App() {
+  const [auth, setAuth] = useState(null); // { token, email }
+  const [sessionId, setSessionId] = useState(null);
+  const [messages, setMessages] = useState([GREETING]);
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const endRef = useRef(null);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleLoginSuccess = (credentialResponse) => {
-    const token = credentialResponse.credential;
-    const payload = decodeJwt(token);
-    
-    if (payload && payload.email) {
-      setAuthData({
-        token,
-        email: payload.email,
-        name: payload.name || payload.email.split('@')[0]
-      });
-    } else {
-      alert("Failed to extract email from Google login.");
-    }
+  const signOut = (notice) => {
+    googleLogout();
+    setAuth(null);
+    setSessionId(null);
+    setMessages([GREETING]);
+    if (notice) alert(notice);
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!inputValue.trim() || !authData) return;
+  const startConversation = async (token) => {
+    const { session_id } = await api('/api/sessions', token);
+    setSessionId(session_id);
+    setMessages([GREETING]);
+  };
 
-    const userText = inputValue.trim();
-    setInputValue('');
-    
-    // Add user message to UI immediately
-    setMessages(prev => [...prev, { role: 'user', text: userText }]);
-    setIsLoading(true);
-
+  const handleLogin = async ({ credential }) => {
+    const email = emailFromIdToken(credential);
+    setAuth({ token: credential, email });
     try {
-      const response = await fetch('http://localhost:8081/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
-        },
-        body: JSON.stringify({ message: userText })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Add AI response to UI
-      setMessages(prev => [...prev, { role: 'ai', text: data.response }]);
-    } catch (error) {
-      console.error('Chat error:', error);
-      setMessages(prev => [...prev, { 
-        role: 'ai', 
-        text: 'Sorry, I encountered an error communicating with the server.' 
-      }]);
-    } finally {
-      setIsLoading(false);
+      await startConversation(credential);
+    } catch (e) {
+      signOut(`Sign-in failed: ${e.message}`);
     }
   };
 
-  if (!authData) {
+  const send = async (e) => {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || !auth || !sessionId || busy) return;
+    setInput('');
+    setMessages((m) => [...m, { role: 'user', text }]);
+    setBusy(true);
+    try {
+      const data = await api('/api/chat', auth.token, { session_id: sessionId, message: text });
+      setMessages((m) => [...m, { role: 'ai', text: data.reply, tools: data.tools_used }]);
+    } catch (err) {
+      if (err.status === 401) {
+        signOut('Your Google sign-in expired. Please sign in again.');
+        return;
+      }
+      setMessages((m) => [...m, { role: 'ai', text: `Sorry, something went wrong: ${err.message}` }]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!auth) {
     return (
       <div className="glass-container login-view">
         <h1 className="login-title">Meridian Dynamics</h1>
         <p className="login-subtitle">
-          Internal HR Assistant Portal.<br/>
-          Please authenticate with your employee account to continue.
+          Internal HR Assistant.<br />
+          Sign in with Google to continue.
         </p>
         <div style={{ marginTop: '20px' }}>
-          <GoogleLogin
-            onSuccess={handleLoginSuccess}
-            onError={() => {
-              console.error('Login Failed');
-              alert('Google Login Failed');
-            }}
-            theme="filled_black"
-            shape="pill"
-          />
+          <GoogleLogin onSuccess={handleLogin} onError={() => alert('Google sign-in failed')} theme="filled_black" shape="pill" />
         </div>
       </div>
     );
@@ -110,53 +106,50 @@ export default function App() {
 
   return (
     <div className="glass-container chat-app">
-      {/* Header */}
       <header className="chat-header">
         <h1>HR Assistant</h1>
-        <div className="user-badge">
-          <div className="indicator"></div>
-          {authData.email}
+        <div className="header-actions">
+          <div className="user-badge">
+            <div className="indicator"></div>
+            {auth.email}
+          </div>
+          <button className="link-button" onClick={() => startConversation(auth.token)} disabled={busy}>
+            New chat
+          </button>
+          <button className="link-button" onClick={() => signOut()}>Sign out</button>
         </div>
       </header>
 
-      {/* Chat Messages */}
       <div className="messages-container">
-        {messages.map((msg, idx) => (
-          <div key={idx} className={`message-wrapper ${msg.role}`}>
-            <div className="message-bubble whitespace-pre-wrap" style={{ whiteSpace: 'pre-wrap' }}>
-              {msg.text}
+        {messages.map((msg, i) => (
+          <div key={i} className={`message-wrapper ${msg.role}`}>
+            <div className="message-bubble">
+              {msg.role === 'ai' ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown> : msg.text}
+              {msg.tools?.length > 0 && <div className="tools-used">Used: {[...new Set(msg.tools)].join(', ')}</div>}
             </div>
           </div>
         ))}
-        {isLoading && (
+        {busy && (
           <div className="message-wrapper ai">
             <div className="message-bubble" style={{ padding: '16px' }}>
-              <div className="typing-indicator">
-                <span></span><span></span><span></span>
-              </div>
+              <div className="typing-indicator"><span></span><span></span><span></span></div>
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
+        <div ref={endRef} />
       </div>
 
-      {/* Input Form */}
       <div className="input-area">
-        <form onSubmit={handleSendMessage} className="input-form">
+        <form onSubmit={send} className="input-form">
           <input
             type="text"
             className="chat-input"
-            placeholder="Ask about PTO, benefits, or policies..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            disabled={isLoading}
+            placeholder={sessionId ? 'Ask about PTO, benefits, or policies...' : 'Starting conversation...'}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={busy || !sessionId}
           />
-          <button 
-            type="submit" 
-            className="send-button"
-            disabled={!inputValue.trim() || isLoading}
-            title="Send Message"
-          >
+          <button type="submit" className="send-button" disabled={!input.trim() || busy || !sessionId} title="Send">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"></line>
               <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>

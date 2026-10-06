@@ -1,0 +1,9 @@
+# Builds one image from a Dockerfile in a subdirectory, with the repo root as context.
+# gcloud builds submit --config deploy/cloudbuild.yaml --service-account ... --substitutions _DOCKERFILE=...,_IMAGE=... .
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "${_DOCKERFILE}", "-t", "${_IMAGE}", "."]
+images: ["${_IMAGE}"]
+options:
+  # The build runs as the deploy service account, which has no Cloud Logging role.
+  logging: NONE
