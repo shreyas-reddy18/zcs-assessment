@@ -1,7 +1,11 @@
-credentials.json
-.env
 .git
-__pycache__
-*.pyc
-.gitignore
-frontend/
+.venv
+**/__pycache__
+**/*.pyc
+.env
+.env.*
+credentials.json
+_legacy
+frontend/node_modules
+frontend/dist
+tests

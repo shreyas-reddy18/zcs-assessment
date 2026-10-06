@@ -1,22 +1,22 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-
-# Virtual environments
-venv/
-env/
 .venv/
-.env
+venv/
+.pytest_cache/
 
-# IDEs
-.vscode/
-.idea/
+# Node
+frontend/node_modules/
+frontend/dist/
 
-# Environment variables
+# Secrets and local config
 .env
 .env.*
 !.env.example
-
-# Service Agent JSON
 credentials.json
+*.pem
+
+# Local scratch
+_legacy/
+.vscode/
+.idea/
