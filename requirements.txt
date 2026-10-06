@@ -1,7 +1,6 @@
-fastapi
-uvicorn
-google-cloud-bigquery
-google-auth
-python-dotenv
-mcp<2.0.0
-google-adk>=2.10.0
+# Local development: everything needed to run all three components and the scripts.
+-r agent/requirements.txt
+-r mcp_server/requirements.txt
+-r gateway/requirements.txt
+google-cloud-storage
+pytest
