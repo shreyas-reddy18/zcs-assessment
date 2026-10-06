@@ -252,6 +252,12 @@ python -m scripts.deploy_agent            # creates, or updates AGENT_ENGINE_RES
 ./deploy/deploy_services.sh gateway       # public gateway; add its URL to the OAuth client's origins
 ```
 
+**Continuous deployment.** A Cloud Build GitHub trigger on `main` runs `deploy/cloudbuild.ci.yaml`. It runs
+the unit tests, builds both images, rolls the new images onto `meridian-mcp` and `meridian-gateway` (keeping
+their service accounts, env vars and IAM), and updates the agent on Agent Engine in place.
+Environment-specific values (engine resource, MCP URL, data store, demo date) are trigger substitutions, not
+code.
+
 IAM, least privilege:
 
 | Identity | Roles |
