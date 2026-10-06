@@ -1,0 +1,65 @@
+{
+  "_comment": "Machine-checkable PTO rules transcribed from each edition of the PTO & Leave Policy, keyed by plan year. These gate the write path, so they are deterministic data rather than something the model extracts at request time. Every rule carries the document and section it came from. Loaded into BigQuery by scripts/load_bigquery.py.",
+  "plan_years": {
+    "2025": {
+      "source_doc_id": "pto_2025",
+      "lead_time_rules": [
+        {"min_business_days": 1, "max_business_days": 2, "min_notice_hours": 24, "section": "1.3 Request Procedures and Lead Times"},
+        {"min_business_days": 3, "max_business_days": 9, "min_notice_hours": 168, "section": "1.3 Request Procedures and Lead Times"},
+        {"min_business_days": 10, "max_business_days": null, "min_notice_hours": 720, "section": "1.3 Request Procedures and Lead Times", "note": "Requires an out-of-office plan reviewed with the employee's manager."}
+      ],
+      "blackout_periods": [
+        {"name": "Spring Platform Migration", "start_date": "2025-06-09", "end_date": "2025-06-20", "max_days_allowed": 2, "section": "1.5 Blackout Periods"},
+        {"name": "Year-End Close", "start_date": "2025-12-15", "end_date": "2025-12-23", "max_days_allowed": 2, "section": "1.5 Blackout Periods"}
+      ],
+      "non_working_days": [
+        {"date": "2025-01-01", "name": "New Year's Day", "kind": "holiday"},
+        {"date": "2025-01-20", "name": "Martin Luther King Jr. Day", "kind": "holiday"},
+        {"date": "2025-02-17", "name": "Presidents' Day", "kind": "holiday"},
+        {"date": "2025-05-26", "name": "Memorial Day", "kind": "holiday"},
+        {"date": "2025-06-19", "name": "Juneteenth", "kind": "holiday"},
+        {"date": "2025-07-04", "name": "Independence Day", "kind": "holiday"},
+        {"date": "2025-09-01", "name": "Labor Day", "kind": "holiday"},
+        {"date": "2025-11-27", "name": "Thanksgiving Day", "kind": "holiday"},
+        {"date": "2025-11-28", "name": "Day after Thanksgiving", "kind": "holiday"},
+        {"date": "2025-12-24", "name": "Winter Shutdown", "kind": "shutdown"},
+        {"date": "2025-12-25", "name": "Winter Shutdown", "kind": "shutdown"},
+        {"date": "2025-12-26", "name": "Winter Shutdown", "kind": "shutdown"},
+        {"date": "2025-12-29", "name": "Winter Shutdown", "kind": "shutdown"},
+        {"date": "2025-12-30", "name": "Winter Shutdown", "kind": "shutdown"},
+        {"date": "2025-12-31", "name": "Winter Shutdown", "kind": "shutdown"},
+        {"date": "2026-01-01", "name": "Winter Shutdown", "kind": "shutdown"}
+      ]
+    },
+    "2026": {
+      "source_doc_id": "pto_2026",
+      "lead_time_rules": [
+        {"min_business_days": 1, "max_business_days": 2, "min_notice_hours": 48, "section": "1.3 Request Procedures and Lead Times"},
+        {"min_business_days": 3, "max_business_days": 9, "min_notice_hours": 336, "section": "1.3 Request Procedures and Lead Times"},
+        {"min_business_days": 10, "max_business_days": null, "min_notice_hours": 720, "section": "1.3 Request Procedures and Lead Times", "note": "Requires an out-of-office plan reviewed with the employee's manager."}
+      ],
+      "blackout_periods": [
+        {"name": "Summer Product Launch", "start_date": "2026-07-07", "end_date": "2026-07-18", "max_days_allowed": 2, "section": "1.5 Blackout Periods"},
+        {"name": "Year-End Close", "start_date": "2026-12-14", "end_date": "2026-12-22", "max_days_allowed": 2, "section": "1.5 Blackout Periods"}
+      ],
+      "non_working_days": [
+        {"date": "2026-01-01", "name": "New Year's Day", "kind": "holiday"},
+        {"date": "2026-01-19", "name": "Martin Luther King Jr. Day", "kind": "holiday"},
+        {"date": "2026-02-16", "name": "Presidents' Day", "kind": "holiday"},
+        {"date": "2026-05-25", "name": "Memorial Day", "kind": "holiday"},
+        {"date": "2026-06-19", "name": "Juneteenth", "kind": "holiday"},
+        {"date": "2026-07-03", "name": "Independence Day (observed)", "kind": "holiday"},
+        {"date": "2026-09-07", "name": "Labor Day", "kind": "holiday"},
+        {"date": "2026-11-26", "name": "Thanksgiving Day", "kind": "holiday"},
+        {"date": "2026-11-27", "name": "Day after Thanksgiving", "kind": "holiday"},
+        {"date": "2026-12-24", "name": "Winter Shutdown", "kind": "shutdown"},
+        {"date": "2026-12-25", "name": "Winter Shutdown", "kind": "shutdown"},
+        {"date": "2026-12-28", "name": "Winter Shutdown", "kind": "shutdown"},
+        {"date": "2026-12-29", "name": "Winter Shutdown", "kind": "shutdown"},
+        {"date": "2026-12-30", "name": "Winter Shutdown", "kind": "shutdown"},
+        {"date": "2026-12-31", "name": "Winter Shutdown", "kind": "shutdown"},
+        {"date": "2027-01-01", "name": "Winter Shutdown", "kind": "shutdown"}
+      ]
+    }
+  }
+}

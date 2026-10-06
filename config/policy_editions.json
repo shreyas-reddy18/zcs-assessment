@@ -1,0 +1,113 @@
+{
+  "_comment": "Edition registry. Single source of truth for (1) the metadata attached to each document when it is imported into Vertex AI Search, and (2) the policy_editions table in BigQuery. Edition facts come from each document's first page, never from its filename. Adding a plan year = add the new documents here, mark the previous edition superseded, then rerun scripts/ingest_policies.py and scripts/load_bigquery.py.",
+  "editions": [
+    {
+      "doc_id": "handbook_2026",
+      "file_name": "01_Employee_Handbook_2026.pdf",
+      "title": "Employee Handbook -- 2026 Edition",
+      "policy_type": "Handbook",
+      "plan_year": 2026,
+      "edition_status": "current",
+      "versioned": true,
+      "effective_start": "2026-01-01",
+      "effective_end": null,
+      "governs": "Policies in effect during calendar year 2026."
+    },
+    {
+      "doc_id": "handbook_2025",
+      "file_name": "01_Employee_Handbook_2025.pdf",
+      "title": "Employee Handbook -- 2025 Edition",
+      "policy_type": "Handbook",
+      "plan_year": 2025,
+      "edition_status": "superseded",
+      "versioned": true,
+      "effective_start": "2025-01-01",
+      "effective_end": "2025-12-31",
+      "governs": "Policies in effect during calendar year 2025."
+    },
+    {
+      "doc_id": "pto_2026",
+      "file_name": "02_PTO_and_Leave_Policy.pdf",
+      "title": "PTO & Leave Policy -- 2026",
+      "policy_type": "PTO_and_Leave",
+      "plan_year": 2026,
+      "edition_status": "current",
+      "versioned": true,
+      "effective_start": "2026-01-01",
+      "effective_end": null,
+      "governs": "Leave taken on or after January 1, 2026."
+    },
+    {
+      "doc_id": "pto_2025",
+      "file_name": "02_PTO_and_Leave_Policy_2025.pdf",
+      "title": "PTO & Leave Policy -- 2025",
+      "policy_type": "PTO_and_Leave",
+      "plan_year": 2025,
+      "edition_status": "superseded",
+      "versioned": true,
+      "effective_start": "2025-01-01",
+      "effective_end": "2025-12-31",
+      "governs": "Leave taken during calendar year 2025."
+    },
+    {
+      "doc_id": "health_2026",
+      "file_name": "03_Health_and_Benefits_Guide.pdf",
+      "title": "Health & Benefits Guide -- 2026",
+      "policy_type": "Health_and_Benefits",
+      "plan_year": 2026,
+      "edition_status": "current",
+      "versioned": true,
+      "effective_start": "2026-01-01",
+      "effective_end": "2026-12-31",
+      "governs": "The 2026 benefits plan year (January 1 - December 31, 2026)."
+    },
+    {
+      "doc_id": "health_2025",
+      "file_name": "03_Health_and_Benefits_Guide_2025.pdf",
+      "title": "Health & Benefits Guide -- 2025",
+      "policy_type": "Health_and_Benefits",
+      "plan_year": 2025,
+      "edition_status": "superseded",
+      "versioned": true,
+      "effective_start": "2025-01-01",
+      "effective_end": "2025-12-31",
+      "governs": "The 2025 benefits plan year (January 1 - December 31, 2025)."
+    },
+    {
+      "doc_id": "expense_2026",
+      "file_name": "04_Expense_and_Reimbursement_Policy.pdf",
+      "title": "Expense & Reimbursement Policy -- 2026",
+      "policy_type": "Expense_and_Reimbursement",
+      "plan_year": 2026,
+      "edition_status": "current",
+      "versioned": true,
+      "effective_start": "2026-01-01",
+      "effective_end": null,
+      "governs": "Expenses incurred on or after January 1, 2026."
+    },
+    {
+      "doc_id": "expense_2025",
+      "file_name": "04_Expense_and_Reimbursement_Policy_2025.pdf",
+      "title": "Expense & Reimbursement Policy -- 2025",
+      "policy_type": "Expense_and_Reimbursement",
+      "plan_year": 2025,
+      "edition_status": "superseded",
+      "versioned": true,
+      "effective_start": "2025-01-01",
+      "effective_end": "2025-12-31",
+      "governs": "Expenses incurred during calendar year 2025, regardless of when the report was submitted."
+    },
+    {
+      "doc_id": "code_of_conduct",
+      "file_name": "05_Code_of_Conduct.docx",
+      "title": "Code of Conduct & Workplace Standards -- 2026",
+      "policy_type": "Code_of_Conduct",
+      "plan_year": 2026,
+      "edition_status": "current",
+      "versioned": false,
+      "effective_start": "2026-01-01",
+      "effective_end": null,
+      "governs": "Single current edition; no prior edition exists in the corpus."
+    }
+  ]
+}
